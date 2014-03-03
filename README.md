@@ -1,4 +1,6 @@
 v.perpsegment
 =============
 
-v.perpline is a GRASS GIS script to create line segment which is central perpendicular to user-defined line segment
+v.perpline is a GRASS GIS script to create 
+line segment by coordinates of the perpendicular vector, 
+segment length and coordinates of central point of the segment.

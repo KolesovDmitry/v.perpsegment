@@ -1,0 +1,146 @@
+#!/usr/bin/env python
+# -*- coding: utf-8  -*-
+#
+############################################################################
+#
+# MODULE:      v.perpsegment
+# AUTHOR(S):   Dmitry Kolesov (kolesov.dm@gmail.com);
+#
+# PURPOSE:     Create line segment by coordinates of the perpendicular 
+#              vector, segment length and coordinates of central point 
+#              of the segment.
+#
+# COPYRIGHT:   (C) 2014 Dmitry Kolesov / NextGIS company
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+############################################################################
+
+#%Module
+#% description: Create line segment by coordinates of the perpendicular vector, segment length and coordinates of central point of the segment.
+#%End
+#%option
+#% key: output
+#% type: string
+#% description: name of the output vector map
+#% required : yes
+#% multiple: no
+#%end
+#%option
+#% key: xperp
+#% type: double
+#% description: X coordinate of the perpendicular
+#% required : yes
+#% multiple: no
+#%end
+#%option
+#% key: yperp
+#% type: double
+#% description: Y coordinate of the perpendicular
+#% required : yes
+#% multiple: no
+#%end
+#%option
+#% key: length
+#% type: double
+#% description: length of the segment
+#% required : yes
+#% multiple: no
+#%end
+#%option
+#% key: x
+#% type: string
+#% description: column of x coordinate of the center points
+#% required : yes
+#% multiple: no
+#%end
+#%option
+#% key: y
+#% type: string
+#% description: column of y coordinate of the center points
+#% required : yes
+#% multiple: no
+#%end
+
+import string
+import os, sys
+import time
+from math import sin, cos, sqrt
+
+if "GISBASE" not in os.environ:
+    print "You must be in GRASS GIS to run this program."
+    sys.exit(1)
+
+import grass.script as grass
+
+def asciiHead():
+    t = string.Template(\
+"""ORGANIZATION: NextGIS
+DIGIT DATE:   $date
+DIGIT NAME:   $user@$host
+MAP NAME:     $name
+MAP DATE:     $year
+MAP SCALE:    1
+OTHER INFO:   Map created by NextGIS software.
+ZONE:         0
+MAP THRESH:   0.0
+VERTI:
+""")
+
+    name = ''
+    date = time.strftime("%m/%d/%y")
+    year = time.strftime("%Y")
+    user = os.getenv('USERNAME') or os.getenv('LOGNAME')
+    host = os.getenv('COMPUTERNAME') or os.uname()[1]
+
+    s = t.substitute(name = name, date = date, year = year,
+                     user = user, host = host)
+    return s
+
+
+def main(options, flags):
+    out_map = options['output']
+    x_cent = float(options['x'])
+    y_cent = float(options['y'])
+    x_perp = float(options['xperp'])
+    y_perp = float(options['yperp'])
+    length = float(options['length'])
+    d = length/2
+
+    # Coordinates of the semment's nodes
+    dist = sqrt(x_perp**2 + y_perp**2)
+    x1 = -d*y_perp/dist + x_cent
+    x2 = d*y_perp/dist + x_cent
+    y1 = d*x_perp/dist + y_cent
+    y2 = -d*x_perp/dist + y_cent
+    
+    
+    t = string.Template(\
+"""
+L 2 1
+  $x1 $y1
+  $x2 $y2
+  1 1
+""")
+    s = t.substitute(x1=x1, x2=x2, y1=y1, y2=y2)
+    
+    allData = asciiHead() + s
+    
+    p = grass.feed_command('v.in.ascii', input='-', output=out_map, format='standard',  overwrite=True, quiet=True)
+    p.stdin.write(allData)
+    p.stdin.close()
+    p.wait()
+
+if __name__ == "__main__":
+    options, flags = grass.parser()
+    main(options, flags)
+    sys.exit(0)
+
